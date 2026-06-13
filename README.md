@@ -71,6 +71,26 @@ To update the schedule or scores, edit the objects in the `M` array. Adding a te
 - **Knockout matchups** show seeding (`1C`, `2F`, `3rd (…)`) until teams are confirmed; there's no logic yet to resolve them from group results.
 - **No persistent storage** — `localStorage` is intentionally avoided (blocked in sandboxed previews); all state is in memory.
 
+## Deploying to hatch.org
+
+Live at **https://www.hatch.org/world-cup/**, served as a static asset from the
+Hugo-based hatch.org blog (a separate repo, `hatch-org`, deployed via AWS Amplify).
+
+This repo's `index.html` is the **source of truth**. Deployment is a copy step —
+[`deploy.sh`](./deploy.sh) syncs it into the blog's static directory:
+
+```bash
+# edit index.html, commit here, then:
+./deploy.sh            # copy into ../hatch-org/blog/static/world-cup/
+./deploy.sh --commit   # copy AND commit it in the blog repo
+# then push the blog repo → Amplify rebuilds the site
+```
+
+The blog's static dir defaults to `../hatch-org/blog/static/world-cup/`; override
+with the `WORLD_CUP_DEST` env var if your layout differs. The copy at
+`hatch-org/blog/static/world-cup/index.html` is **generated — never edit it
+directly**; change it here and re-run `deploy.sh`.
+
 ## Possible next steps
 
 - Resolve knockout bracket teams from entered group results (making `desc` dynamic).
