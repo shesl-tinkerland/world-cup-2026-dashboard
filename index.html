@@ -55,6 +55,9 @@
     display:flex;align-items:center;gap:10px;
   }
   .eyebrow .pulse{width:7px;height:7px;border-radius:50%;background:var(--green-bright);box-shadow:0 0 0 0 rgba(45,232,154,.6);animation:pulse 2.4s infinite}
+  .fresh{font-family:'Roboto Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2);margin-left:4px}
+  .fresh.on{color:var(--green-bright)}
+  .fresh .d{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:1px}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(45,232,154,.5)}70%{box-shadow:0 0 0 8px rgba(45,232,154,0)}100%{box-shadow:0 0 0 0 rgba(45,232,154,0)}}
   h1{
     font-family:'Barlow Condensed','Inter',sans-serif;
@@ -226,7 +229,7 @@
 
 <header class="top">
   <div class="wrap">
-    <div class="eyebrow"><span class="pulse"></span> FIFA World Cup 26 · USA · Canada · Mexico</div>
+    <div class="eyebrow"><span class="pulse"></span> FIFA World Cup 26 · USA · Canada · Mexico <span id="fresh" class="fresh"></span></div>
     <h1>Where &amp; When<br><span class="y">To Watch</span></h1>
     <p class="sub">All 104 matches — kickoff times in Eastern, the channel they're on, and every place to stream them. June 11 – July 19, 2026.</p>
     <div class="statline">
@@ -265,6 +268,15 @@
       <option value="FOX">FOX only</option>
       <option value="FS1">FS1 only</option>
     </select>
+    <select id="fTz">
+      <option value="Eastern">Times: Eastern (ET)</option>
+      <option value="Auto">Times: My timezone</option>
+      <option value="Pacific">Times: Pacific</option>
+      <option value="Mountain">Times: Mountain</option>
+      <option value="Central">Times: Central</option>
+      <option value="UK">Times: UK</option>
+      <option value="CET">Times: Central Europe</option>
+    </select>
     <label class="toggle" id="tToday"><span class="box"></span> Today</label>
     <label class="toggle" id="tUpcoming"><span class="box"></span> Upcoming</label>
     <label class="toggle" id="tParty"><span class="box"></span> Watch party</label>
@@ -275,6 +287,17 @@
       <button class="qchip" data-team="USA">🇺🇸 USA</button>
       <button class="qchip" data-team="Mexico">🇲🇽 Mexico</button>
       <button class="qchip" data-team="Canada">🇨🇦 Canada</button>
+    </div>
+    <div class="quick" id="quick2">
+      <span class="qlabel">Contenders</span>
+      <button class="qchip" data-team="Brazil">🇧🇷 Brazil</button>
+      <button class="qchip" data-team="Argentina">🇦🇷 Argentina</button>
+      <button class="qchip" data-team="France">🇫🇷 France</button>
+      <button class="qchip" data-team="England">🏴󠁧󠁢󠁥󠁮󠁧󠁿 England</button>
+      <button class="qchip" data-team="Spain">🇪🇸 Spain</button>
+      <button class="qchip" data-team="Germany">🇩🇪 Germany</button>
+      <button class="qchip" data-team="Portugal">🇵🇹 Portugal</button>
+      <button class="qchip" data-team="Netherlands">🇳🇱 Netherlands</button>
     </div>
   </div>
 </div>
@@ -489,13 +512,33 @@ const fTeam=document.getElementById('fTeam');
 teams.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;fTeam.appendChild(o);});
 
 // ---- Stats --------------------------------------------------------
-document.getElementById('stToday').textContent = M.filter(m=>m.d===TODAY).length || "0";
-document.getElementById('stUpcoming').textContent = M.filter(m=>m._st==="up").length;
-const curStage = (()=>{ const up=M.filter(m=>m._st!=="ft"); if(!up.length) return "Complete"; const g=up[0].grp; return g.startsWith("Group")?"Group Stage":g; })();
-document.getElementById('stStage').textContent = curStage;
+function computeStats(){
+  document.getElementById('stToday').textContent = M.filter(m=>m.d===TODAY).length || "0";
+  document.getElementById('stUpcoming').textContent = M.filter(m=>m._st==="up").length;
+  const up=M.filter(m=>m._st!=="ft");
+  document.getElementById('stStage').textContent = !up.length ? "Complete"
+    : up[0].grp.startsWith("Group") ? "Group Stage" : up[0].grp;
+}
+computeStats();
 
 // ---- State + render ----------------------------------------------
-const state={q:"",stage:"",team:"",tv:"",today:false,up:false,party:false};
+const state={q:"",stage:"",team:"",tv:"",today:false,up:false,party:false,tz:"Eastern"};
+
+// Timezone display. Default "Eastern" keeps the broadcaster's exact labels;
+// other zones reformat from the match's absolute instant (startUTC), .ics stays UTC.
+const TZ_ZONES={Pacific:"America/Los_Angeles",Mountain:"America/Denver",Central:"America/Chicago",UK:"Europe/London",CET:"Europe/Paris"};
+function fmtTime(m){
+  if(m.t==="FT"||m.t==="TBD") return {time:m.t,zone:""};
+  if(!state.tz || state.tz==="Eastern") return {time:m.t,zone:"ET"};
+  try{
+    const dt=startUTC(m);                         // absolute instant (UTC)
+    const tz=state.tz==="Auto"?undefined:TZ_ZONES[state.tz];
+    const time=new Intl.DateTimeFormat(undefined,{timeZone:tz,hour:"numeric",minute:"2-digit"}).format(dt);
+    const parts=new Intl.DateTimeFormat("en-US",{timeZone:tz,hour:"numeric",timeZoneName:"short"}).formatToParts(dt);
+    const zone=(parts.find(p=>p.type==="timeZoneName")||{}).value||"";
+    return {time,zone};
+  }catch(e){ return {time:m.t,zone:"ET"}; }
+}
 
 function passes(m){
   if(state.stage){
@@ -503,13 +546,13 @@ function passes(m){
     else if(state.stage==="ko-late" && !(m.grp==="Final"||m.grp==="Third place")) return false;
     else if(["Round of 32","Round of 16","Quarterfinal","Semifinal"].includes(state.stage) && m.grp!==state.stage) return false;
   }
-  if(state.team && m.h!==state.team && m.a!==state.team) return false;
+  if(state.team && ![m.h,m.a,m._th,m._ta].includes(state.team)) return false;
   if(state.tv && m.tv!==state.tv) return false;
   if(state.today && m.d!==TODAY) return false;
   if(state.up && m._st!=="up") return false;
   if(state.q){
     const s=state.q.toLowerCase();
-    const hay=`${m.h||""} ${m.a||""} ${m.desc||""} ${m.v} ${m.grp}`.toLowerCase();
+    const hay=`${m.h||""} ${m.a||""} ${m._th||""} ${m._ta||""} ${m.desc||""} ${m.v} ${m.grp}`.toLowerCase();
     if(!hay.includes(s)) return false;
   }
   return true;
@@ -550,17 +593,21 @@ function render(){
 
 function card(m){
   const st=m._st;
-  const stLabel = st==="live"?`<span class="status live"><span class="d"></span>Live</span>`
+  const detail = (st==="live" && m._detail) ? " "+m._detail : "";
+  const stLabel = st==="live"?`<span class="status live"><span class="d"></span>Live${detail}</span>`
     : st==="ft"?`<span class="status ft">Full time</span>`
     : `<span class="status up">Upcoming</span>`;
   const tvClass = m.tv==="FOX"?"fox":m.tv==="FS1"?"fs1":"tbd";
+  const H=m.h||m._th, A=m.a||m._ta;        // resolved knockout teams fall back to placeholder
   let center;
-  if(m.h){
-    const score = m.res?`<span class="score">${m.res}</span>`:`<span class="vs">vs</span>`;
+  if(H){
+    const liveScore = (m._scoreH!=null && m._scoreA!=null);
+    const score = liveScore?`<span class="score">${m._scoreH}-${m._scoreA}</span>`
+      : m.res?`<span class="score">${m.res}</span>`:`<span class="vs">vs</span>`;
     center=`<div class="teams">
-        <span class="side"><span class="flag">${FLAGS[m.h]||"⚽"}</span><span class="nm">${m.h}</span></span>
+        <span class="side"><span class="flag">${FLAGS[H]||"⚽"}</span><span class="nm">${H}</span></span>
         ${score}
-        <span class="side"><span class="nm">${m.a}</span><span class="flag">${FLAGS[m.a]||"⚽"}</span></span>
+        <span class="side"><span class="nm">${A}</span><span class="flag">${FLAGS[A]||"⚽"}</span></span>
       </div>`;
   } else {
     center=`<div class="teams"><span class="ko-desc">${m.desc}</span></div>`;
@@ -568,8 +615,9 @@ function card(m){
   const grpClass = m.grp.startsWith("Group")?"":"ko";
   const esClass = m.es==="Universo"?"uni":"tele";
   const stream = `<b>FOX One</b> · Peacock · Fubo`;
+  const ft=fmtTime(m);
   return `<article class="match ${st}">
-    <div class="when"><span class="time">${m.t}</span>${m.t!=="FT"&&m.t!=="TBD"?'<span class="et">ET</span>':''}</div>
+    <div class="when"><span class="time">${ft.time}</span>${ft.zone?`<span class="et">${ft.zone}</span>`:''}</div>
     <div class="mid">
       ${center}
       <div class="meta">
@@ -593,6 +641,7 @@ document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value
 document.getElementById('fStage').addEventListener('change',e=>{state.stage=e.target.value;render();});
 document.getElementById('fTeam').addEventListener('change',e=>{state.team=e.target.value;render();});
 document.getElementById('fTv').addEventListener('change',e=>{state.tv=e.target.value;render();});
+document.getElementById('fTz').addEventListener('change',e=>{state.tz=e.target.value;render();});
 const tT=document.getElementById('tToday'), tU=document.getElementById('tUpcoming'), tP=document.getElementById('tParty');
 tT.addEventListener('click',()=>{state.today=!state.today;tT.classList.toggle('on',state.today);render();});
 tU.addEventListener('click',()=>{state.up=!state.up;tU.classList.toggle('on',state.up);render();});
@@ -685,8 +734,90 @@ function downloadICS(){
 }
 document.getElementById('ics').addEventListener('click',downloadICS);
 
+// ---- Live data (ESPN, client-side, offline-first) ----------------
+// Unofficial ESPN endpoint: no key, CORS-enabled. Hydrates the static M[] with
+// live status/scores and resolved knockout teams. Any failure falls back
+// silently to the static schedule. No backend, no webhooks — just polling.
+const ESPN_BASE='https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
+const ESPN_NAME={"United States":"USA","Bosnia-Herzegovina":"Bosnia and Herzegovina","Congo DR":"DR Congo"};
+const KNOWN=new Set(Object.keys(FLAGS));
+const ymd=d=>d.replace(/-/g,'');
+function normName(n){ n=(n||"").trim(); return ESPN_NAME[n]||n; }
+function isPlaceholder(n){ return /place|winner|runner|loser|tbd|group\s/i.test(n||""); }
+function setFresh(on){
+  const el=document.getElementById('fresh');
+  el.className='fresh'+(on?' on':'');
+  el.innerHTML = on ? '<span class="d"></span>Live data' : '';
+}
+async function fetchEvents(dates){
+  const r=await fetch(dates?`${ESPN_BASE}?dates=${dates}`:ESPN_BASE,{cache:'no-store'});
+  if(!r.ok) throw new Error('espn '+r.status);
+  const d=await r.json();
+  return (d.events||[]).map(e=>{
+    const c=(e.competitions||[])[0]||{}, cs=c.competitors||[];
+    const home=cs.find(x=>x.homeAway==='home')||cs[0]||{};
+    const away=cs.find(x=>x.homeAway==='away')||cs[1]||{};
+    const t=(e.status||{}).type||{};
+    return {when:new Date(e.date).getTime(), state:t.state, detail:t.shortDetail||t.detail||'',
+      hName:(home.team||{}).displayName, hScore:home.score,
+      aName:(away.team||{}).displayName, aScore:away.score};
+  });
+}
+function applyEvents(evs){
+  evs.forEach(ev=>{
+    const eh=normName(ev.hName), ea=normName(ev.aName);
+    let best=null,bestDiff=Infinity;
+    M.forEach(m=>{
+      const diff=Math.abs(startUTC(m).getTime()-ev.when);
+      if(diff>90*60*1000) return;                 // ±90 min instant window
+      if(m.h){ const pair=[m.h,m.a]; if(!(pair.includes(eh)&&pair.includes(ea))) return; }
+      if(diff<bestDiff){bestDiff=diff;best=m;}
+    });
+    if(!best) return;
+    const m=best;
+    if(ev.state) m._st = ev.state==='in'?'live':ev.state==='post'?'ft':'up';
+    m._detail = ev.state==='in'?ev.detail:'';
+    const hasScore = ev.hScore!=null && ev.aScore!=null && ev.state!=='pre';
+    if(!m.h){                                      // knockout: resolve teams from feed
+      if(eh&&ea&&!isPlaceholder(ev.hName)&&!isPlaceholder(ev.aName)){ m._th=eh; m._ta=ea; }
+      if(hasScore){ m._scoreH=ev.hScore; m._scoreA=ev.aScore; }
+    } else if(hasScore){                           // group: align scores to M orientation
+      if(eh===m.h){ m._scoreH=ev.hScore; m._scoreA=ev.aScore; }
+      else { m._scoreH=ev.aScore; m._scoreA=ev.hScore; }
+    }
+    [eh,ea].forEach(n=>{ if(n&&!isPlaceholder(n)&&!KNOWN.has(n)) console.warn('Unmapped ESPN team name:',n); });
+  });
+}
+async function hydrate(dates){
+  try{ applyEvents(await fetchEvents(dates)); computeStats(); render(); setFresh(true); }
+  catch(e){ setFresh(false); }                     // keep static data on any failure
+}
+function liveWindowActive(){
+  const now=Date.now();
+  return M.some(m=>{
+    if(m._st==='live') return true;
+    const s=startUTC(m).getTime();
+    return s-now < 20*60*1000 && s-now > -150*60*1000;   // starts <20m, or within ~2.5h after KO
+  });
+}
+let _pollT;
+function pollDates(){                               // 3-day window around today (covers post-midnight games)
+  const f=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const t=new Date(TODAY+'T12:00:00'), y=new Date(t), z=new Date(t);
+  y.setDate(y.getDate()-1); z.setDate(z.getDate()+1);
+  return `${f(y)}-${f(z)}`;
+}
+function schedulePoll(){
+  clearTimeout(_pollT);
+  const fast=document.visibilityState==='visible' && liveWindowActive();
+  _pollT=setTimeout(async()=>{ if(document.visibilityState==='visible') await hydrate(pollDates()); schedulePoll(); }, fast?45000:600000);
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ hydrate(pollDates()); schedulePoll(); } });
+
 // default: if there are matches today, focus the day but show all
 render();
+// hydrate from ESPN: one full-range backfill, then begin visibility-aware polling
+hydrate(`${ymd(M[0].d)}-${ymd(M[M.length-1].d)}`).then(schedulePoll);
 // scroll to today's section on load
 window.addEventListener('load',()=>{
   const el=document.querySelector('.daygroup.today');

@@ -14,8 +14,10 @@ All 104 matches, June 11 – July 19, 2026, hosted across the USA, Canada, and M
 - **Search** across team, venue, and round.
 - **Filters** — round, team, and FOX-vs-FS1 dropdowns.
 - **Toggles** — Today, Upcoming, and Watch Party mode.
-- **Host quick-picks** — one-tap 🇺🇸 USA / 🇲🇽 Mexico / 🇨🇦 Canada chips (tap again to clear).
-- **Live status** — pulsing Live, Full Time (with score), and Upcoming states, computed from the clock.
+- **Quick-pick chips** — one-tap host (🇺🇸 USA / 🇲🇽 Mexico / 🇨🇦 Canada) and contender (Brazil, Argentina, France, England, Spain, Germany, Portugal, Netherlands) filters (tap again to clear).
+- **Live scores & status** — hydrates real scores, live clock, and Live/FT/Upcoming state from a free public feed (client-side, no backend), with a graceful fallback to the static schedule when offline.
+- **Dynamic bracket** — knockout matchups fill in real team names as FIFA sets them (showing seeding placeholders like `1C vs 2F` until then).
+- **Timezone selector** — view kickoff times in Eastern (default), your local zone, or other presets; the calendar export stays absolute.
 - **Calendar export (`.ics`)** — download upcoming matches that match your current filters, in two modes.
 - **Responsive** down to mobile, with a quiet dark aesthetic.
 
@@ -50,6 +52,7 @@ Everything lives in `index.html`: an inline `<style>` (dark theme via CSS custom
 - **`M`** — the match array, the single source of truth. Each entry is a compact object: `d` (date), `t` (display time, e.g. `"3:00 PM"` or `"FT"`), `sk` (intra-day sort key — the hour in 24h; `24` = post-midnight game listed under the prior day; fractional parts are tiebreakers, **not** minutes), `h`/`a` (teams, omitted for unresolved knockouts), `res` (score), `grp` (round), `v` (venue), `tv` (`"FOX"`/`"FS1"`), and `desc` (knockout matchup like `"1C vs 2F"`).
 - **Derived at load** — `_st` (live/up/ft status) and `es` (Spanish channel: a hardcoded set of 12 group-stage games on Universo, the rest on Telemundo).
 - **`state` → `passes(m)` → `render()`** — `state` holds all filters, `passes` decides visibility, `render` regroups visible matches by day and builds HTML via `card(m)`. Every control change triggers a full re-render.
+- **Live-data layer (client-side, offline-first)** — after the static render, `hydrate()` fetches the unofficial ESPN `fifa.world/scoreboard` feed (no key, CORS-enabled), matches events to `M` by absolute kickoff instant (`startUTC`) + team pair, and overlays live status/score (`_scoreH`/`_scoreA`/`_detail`) and resolved knockout teams (`_th`/`_ta`). A name map handles the few ESPN naming differences. Polling is visibility-aware (faster during live windows, paused when the tab is hidden); any failure falls back silently to the static schedule.
 
 ### Time handling
 
@@ -66,10 +69,10 @@ To update the schedule or scores, edit the objects in the `M` array. Adding a te
 
 ## Known limitations
 
-- **EDT vs EST** — labels read "ET" and mean EDT; if literal EST is ever needed, shift the displayed labels and the `.ics` UTC math by one hour.
+- **Unofficial live feed** — live scores/status and knockout teams come from ESPN's *unofficial* `fifa.world` endpoint, which can change or break without notice. The app degrades gracefully to the static `M` data; the freshness indicator in the header shows whether live data is connected.
+- **Default ET, EDT under the hood** — labels read "ET" and mean EDT. The timezone selector reformats other zones from each match's absolute instant, but **day-grouping stays by tournament matchday** (a late ET game keeps its matchday even if it shows a next-day local time).
 - **Spanish channel split** is from a secondary source — re-verify the 12-game Universo set if the network revises it.
-- **Knockout matchups** show seeding (`1C`, `2F`, `3rd (…)`) until teams are confirmed; there's no logic yet to resolve them from group results.
-- **No persistent storage** — `localStorage` is intentionally avoided (blocked in sandboxed previews); all state is in memory.
+- **No persistent storage** — `localStorage` is intentionally avoided (blocked in sandboxed previews); all state, including the timezone choice, is in memory.
 
 ## Deploying to hatch.org
 
@@ -93,10 +96,9 @@ directly**; change it here and re-run `deploy.sh`.
 
 ## Possible next steps
 
-- Resolve knockout bracket teams from entered group results (making `desc` dynamic).
-- Optional live-score hydration from an API.
-- A timezone selector (convert labels client-side; keep the `.ics` absolute).
-- A second tier of "contender" quick-pick chips.
+- A group-standings table derived from results.
+- Goal-scorer / match-detail expansion per card (the ESPN feed carries more than score + status).
+- Per-zone day-grouping when a non-Eastern timezone is selected.
 
 ---
 
