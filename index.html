@@ -144,6 +144,11 @@
   .toggle.on .box::after{content:"";width:6px;height:6px;border-radius:1px;background:var(--bg)}
   .btn-clear{background:none;border:1px solid var(--line);color:var(--muted);font-size:12.5px;padding:9px 12px;border-radius:10px;cursor:pointer;font-family:'Inter'}
   .btn-clear:hover{border-color:var(--line-strong);color:var(--text)}
+  /* Collapsible filters: desktop shows everything inline; the toggle is mobile-only */
+  .filterbody{display:contents}
+  .btn-filters{display:none;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line-strong);color:var(--text);font-family:'Inter';font-size:13.5px;font-weight:500;padding:10px 14px;border-radius:10px;cursor:pointer}
+  .btn-filters[aria-expanded="true"]{border-color:var(--green);color:var(--green-bright)}
+  .btn-filters .cnt{font-family:'Roboto Mono',monospace;font-size:11px;background:var(--gold);color:#231803;border-radius:20px;padding:1px 7px;font-weight:600}
 
   /* ---------- Board ---------- */
   .board{max-width:1180px;margin:8px auto 0;padding:0 22px}
@@ -235,6 +240,12 @@
   @media (max-width:680px){
     .top{min-height:248px;padding:30px 18px 26px}
     h1{white-space:normal;font-size:clamp(36px,12vw,58px)}
+    .controls .wrap{gap:8px}
+    .btn-filters{display:inline-flex}
+    .filterbody{display:none;flex-basis:100%;flex-wrap:wrap;gap:10px;margin-top:4px}
+    .filterbody.open{display:flex}
+    .filterbody select,.filterbody .toggle,.filterbody .btn-clear,.filterbody .btn-ics{flex:1 1 auto}
+    .dayhead{top:66px}
     .match{grid-template-columns:62px 1fr;gap:12px;padding:12px}
     .watch{grid-column:1 / -1;flex-direction:row;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:9px;text-align:left;margin-top:2px}
     .nm,.ko-desc{font-size:18px}
@@ -279,6 +290,11 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#8493AD" stroke-width="2"/><path d="M21 21l-4-4" stroke="#8493AD" stroke-width="2" stroke-linecap="round"/></svg>
       <input id="q" type="text" placeholder="Search team, venue, or city…" autocomplete="off">
     </div>
+    <button class="btn-filters" id="filtersToggle" aria-expanded="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
+      <span id="filtersLabel">Filters</span>
+    </button>
+    <div class="filterbody" id="filterbody">
     <select id="fStage">
       <option value="">All rounds</option>
       <option value="group">Group stage</option>
@@ -325,6 +341,7 @@
       <button class="qchip" data-team="Portugal">🇵🇹 Portugal</button>
       <button class="qchip" data-team="Netherlands">🇳🇱 Netherlands</button>
     </div>
+    </div><!-- /filterbody -->
   </div>
 </div>
 
@@ -585,6 +602,7 @@ function passes(m){
 }
 
 function render(){
+  updateFiltersBadge();
   const list=document.getElementById('list');
   const shown=M.filter(passes);
   document.getElementById('count').textContent = `${shown.length} match${shown.length!==1?"es":""} shown`;
@@ -668,6 +686,18 @@ document.getElementById('fStage').addEventListener('change',e=>{state.stage=e.ta
 document.getElementById('fTeam').addEventListener('change',e=>{state.team=e.target.value;render();});
 document.getElementById('fTv').addEventListener('change',e=>{state.tv=e.target.value;render();});
 document.getElementById('fTz').addEventListener('change',e=>{state.tz=e.target.value;render();});
+
+// ---- Mobile collapsible filters ----------------------------------
+const filtersToggle=document.getElementById('filtersToggle');
+const filterbody=document.getElementById('filterbody');
+filtersToggle.addEventListener('click',()=>{
+  const open=filterbody.classList.toggle('open');
+  filtersToggle.setAttribute('aria-expanded',open?'true':'false');
+});
+function updateFiltersBadge(){
+  const n=[state.q,state.stage,state.team,state.tv,state.today,state.up,state.party].filter(Boolean).length;
+  document.getElementById('filtersLabel').innerHTML = n ? `Filters <span class="cnt">${n}</span>` : 'Filters';
+}
 const tT=document.getElementById('tToday'), tU=document.getElementById('tUpcoming'), tP=document.getElementById('tParty');
 tT.addEventListener('click',()=>{state.today=!state.today;tT.classList.toggle('on',state.today);render();});
 tU.addEventListener('click',()=>{state.up=!state.up;tU.classList.toggle('on',state.up);render();});
