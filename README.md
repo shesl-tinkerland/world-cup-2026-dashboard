@@ -75,32 +75,30 @@ To update the schedule or scores, edit the objects in the `M` array. Adding a te
 - **Spanish channel split** is from a secondary source — re-verify the 12-game Universo set if the network revises it.
 - **No persistent storage** — `localStorage` is intentionally avoided (blocked in sandboxed previews); all state, including the timezone choice, is in memory.
 
-## Deploying to hatch.org
+## Deploying
 
-Live at **https://www.hatch.org/world-cup/**, served as a static asset from the
-Hugo-based hatch.org blog (a separate repo, `hatch-org`, deployed via AWS Amplify).
+It's a static page — host it anywhere that serves files: GitHub Pages, Netlify,
+Vercel, Cloudflare Pages, an S3 bucket, or any web server. Just publish
+`index.html` and `hero.jpg` together (the page references `hero.jpg` with a
+relative path). No build step, no environment variables, no server-side code.
 
-This repo's `index.html` is the **source of truth**. Deployment is a copy step —
-[`deploy.sh`](./deploy.sh) syncs it into the blog's static directory:
-
-```bash
-# edit index.html, commit here, then:
-./deploy.sh            # copy into ../hatch-org/blog/static/world-cup/
-./deploy.sh --commit   # copy AND commit it in the blog repo
-# then push the blog repo → Amplify rebuilds the site
-```
-
-`deploy.sh` syncs both `index.html` and `hero.jpg`. The blog's static dir
-defaults to `../hatch-org/blog/static/world-cup/`; override with the
-`WORLD_CUP_DEST` env var if your layout differs. The copies under
-`hatch-org/blog/static/world-cup/` are **generated — never edit them
-directly**; change them here and re-run `deploy.sh`.
+The share links use the page's own URL automatically, so they work on whatever
+domain you deploy to.
 
 ## Possible next steps
 
 - A group-standings table derived from results.
 - Goal-scorer / match-detail expansion per card (the ESPN feed carries more than score + status).
 - Per-zone day-grouping when a non-Eastern timezone is selected.
+
+## Contributing
+
+Issues and pull requests are welcome. The whole app is one `index.html`, so
+changes are easy to make and review — open it in a browser and you're developing.
+
+## License
+
+[MIT](./LICENSE) © Steve Hatch. Built with [Claude](https://claude.com/claude-code).
 
 ---
 
