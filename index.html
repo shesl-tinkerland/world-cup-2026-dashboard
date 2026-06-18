@@ -575,6 +575,29 @@ const state={q:"",stage:"",team:"",tv:"",today:false,up:false,party:false,tz:"Ea
 // Timezone display. Default "Eastern" keeps the broadcaster's exact labels;
 // other zones reformat from the match's absolute instant (startUTC), .ics stays UTC.
 const TZ_ZONES={Pacific:"America/Los_Angeles",Mountain:"America/Denver",Central:"America/Chicago",UK:"Europe/London",CET:"Europe/Paris"};
+
+// ---- Persisted preferences (timezone + watch-party) --------------
+// Guarded so it no-ops in sandboxed artifact frames where storage is blocked;
+// persists when the page is rehosted normally. All other state stays in-memory.
+const PREFS_KEY='wc26-prefs';
+function loadPrefs(){ try{ return JSON.parse(localStorage.getItem(PREFS_KEY))||{}; }catch(e){ return {}; } }
+function savePrefs(){ try{ localStorage.setItem(PREFS_KEY, JSON.stringify({tz:state.tz, party:state.party})); }catch(e){} }
+// Map common IANA zones to a named dropdown option; anything unmapped falls back
+// to "Auto", which already formats in the browser's own zone (fmtTime, below).
+function detectTz(){
+  try{
+    const z=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const map={
+      'America/New_York':'Eastern','America/Detroit':'Eastern','America/Toronto':'Eastern',
+      'America/Chicago':'Central','America/Mexico_City':'Central',
+      'America/Denver':'Mountain','America/Phoenix':'Mountain','America/Edmonton':'Mountain',
+      'America/Los_Angeles':'Pacific','America/Vancouver':'Pacific','America/Tijuana':'Pacific',
+      'Europe/London':'UK','Europe/Lisbon':'UK',
+      'Europe/Paris':'CET','Europe/Madrid':'CET','Europe/Berlin':'CET','Europe/Rome':'CET'
+    };
+    return map[z] || 'Auto';
+  }catch(e){ return 'Eastern'; }
+}
 function fmtTime(m){
   if(m.t==="FT"||m.t==="TBD") return {time:m.t,zone:""};
   if(!state.tz || state.tz==="Eastern") return {time:m.t,zone:"ET"};
@@ -690,7 +713,7 @@ document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value
 document.getElementById('fStage').addEventListener('change',e=>{state.stage=e.target.value;render();});
 document.getElementById('fTeam').addEventListener('change',e=>{state.team=e.target.value;render();});
 document.getElementById('fTv').addEventListener('change',e=>{state.tv=e.target.value;render();});
-document.getElementById('fTz').addEventListener('change',e=>{state.tz=e.target.value;render();});
+document.getElementById('fTz').addEventListener('change',e=>{state.tz=e.target.value;savePrefs();render();});
 
 // ---- Mobile collapsible filters ----------------------------------
 const filtersToggle=document.getElementById('filtersToggle');
@@ -706,7 +729,7 @@ function updateFiltersBadge(){
 const tT=document.getElementById('tToday'), tU=document.getElementById('tUpcoming'), tP=document.getElementById('tParty');
 tT.addEventListener('click',()=>{state.today=!state.today;tT.classList.toggle('on',state.today);render();});
 tU.addEventListener('click',()=>{state.up=!state.up;tU.classList.toggle('on',state.up);render();});
-tP.addEventListener('click',()=>{state.party=!state.party;tP.classList.toggle('on',state.party);render();});
+tP.addEventListener('click',()=>{state.party=!state.party;tP.classList.toggle('on',state.party);savePrefs();render();});
 document.querySelectorAll('.qchip').forEach(c=>{
   c.addEventListener('click',()=>{
     const t=c.dataset.team;
@@ -719,7 +742,7 @@ document.getElementById('clear').addEventListener('click',()=>{
   Object.assign(state,{q:"",stage:"",team:"",tv:"",today:false,up:false,party:false});
   document.getElementById('q').value="";document.getElementById('fStage').value="";
   document.getElementById('fTeam').value="";document.getElementById('fTv').value="";
-  tT.classList.remove('on');tU.classList.remove('on');tP.classList.remove('on');render();
+  tT.classList.remove('on');tU.classList.remove('on');tP.classList.remove('on');savePrefs();render();
 });
 
 // ---- Calendar export (.ics) --------------------------------------
@@ -900,6 +923,13 @@ function schedulePoll(){
   _pollT=setTimeout(async()=>{ if(document.visibilityState==='visible') await hydrate(pollDates()); schedulePoll(); }, fast?45000:600000);
 }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ hydrate(pollDates()); schedulePoll(); } });
+
+// restore persisted prefs (or auto-detect timezone on first visit) before first paint
+const _saved=loadPrefs();
+state.tz = _saved.tz || detectTz();
+state.party = _saved.party===true;
+document.getElementById('fTz').value = state.tz;
+tP.classList.toggle('on', state.party);
 
 // default: if there are matches today, focus the day but show all
 render();
