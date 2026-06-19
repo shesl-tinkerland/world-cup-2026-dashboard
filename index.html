@@ -22,6 +22,17 @@
 <meta name="twitter:description" content="Every 2026 FIFA World Cup match: kickoff times in your timezone, English & Spanish TV channels, streaming options, live scores, and calendar export.">
 <meta name="twitter:image" content="https://www.hatch.org/world-cup/hero.jpg">
 <link rel="canonical" href="https://www.hatch.org/world-cup/">
+<!-- Google Analytics — deployed host only; keeps the standalone/artifact build dependency-free -->
+<script>
+if (location.hostname.endsWith('hatch.org')) {
+  var s=document.createElement('script');
+  s.async=true; s.src='https://www.googletagmanager.com/gtag/js?id=G-VD78NL2W6N';
+  document.head.appendChild(s);
+  window.dataLayer=window.dataLayer||[];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); gtag('config','G-VD78NL2W6N');
+}
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚽%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
